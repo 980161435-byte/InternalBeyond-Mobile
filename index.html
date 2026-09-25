@@ -5847,7 +5847,7 @@ function applyTheme(dark){
 
   var _md=dark?'infernal':'internal';window._ibThemeMode=_md;
   document.body.classList.toggle('theme-infernal',!!dark);
-  try{localStorage.setItem('ib_m_theme',_md)}catch(e){}
+  try{localStorage.setItem('ib_m_theme',_md)}catch(e){}try{if(typeof _mp==='object'&&_mp&&typeof _mpFromDb!=='undefined'&&_mpFromDb&&_mp.themeMode!==_md){_mp.themeMode=_md;saveMP()}}catch(e){}/* v301-p：明暗主题同步进 mobilePrefs.themeMode */
   /* APP 适配：状态栏颜色跟随主题 */
   try{
     var _pc=(typeof _mp==='object'&&_mp&&_mp.pwa)||{};var mc=document.getElementById('meta-theme-color');if(mc)mc.setAttribute('content',dark?(_pc.c2||'#181e32'):(_pc.c1||'#dfe9f6'));
@@ -12622,6 +12622,7 @@ $('import-file').addEventListener('change',async function(ev){
     $('mio-cancel').addEventListener('click',_mioClose);return;
   }
   _mioFound.forEach(function(s){h+='<div class="mio-row" data-s="'+s+'"><span class="mk-box on"></span><span class="st"></span>'+STORE_CN[s]+'<b>'+_mioData[s].length+' 条</b></div>'});
+  try{if(window._ibIsDeskBackup&&window._ibIsDeskBackup(data)&&Array.isArray(data.apiSettings)&&data.apiSettings.some(function(r){return r&&window._ibPhoneOwned(r.id)})){_mioSel['__mpForce']=false;h+='<div class="mio-row off" data-s="__mpForce"><span class="mk-box"></span><span class="st"></span>用存档里的手机端设置覆盖本机<b>默认不勾</b></div><div class="mio-note">这是电脑端导出的备份。里面的手机端设置（外观、See、主题方案、壁纸、表情包等）是之前经电脑端转手的旧副本，默认保留本机，只并入电脑端改过的名片签名与卡片背景；换新手机、要用它恢复时再勾上这一行。</div>'}}catch(e){}/* v301-p */
   if(Array.isArray(data.media)&&data.media.length&&window._ibVid)h+='<div class="mio-row" data-s="__media"><span class="mk-box on"></span><span class="st"></span>本机媒体库（视频与主题图片）<b>'+data.media.length+' 项</b></div>';/* v296-p */
   if(_mioSkipped.length)h+='<div class="mio-note">将跳过（手机端不支持）：'+_mioSkipped.join('、')+'</div>';
   h+='<div class="mio-note">同 id 的记录会被文件内容覆盖，其余数据不受影响。点击某一行可取消勾选：本次导入将跳过该模块（默认全选）。</div>';
@@ -12633,11 +12634,12 @@ $('import-file').addEventListener('change',async function(ev){
 async function _mioRunImport(){
   if(_mioBusy||!_mioData)return;
   _mioBusy=true;var e=_mioEl();e.ft.innerHTML='<button class="btn" disabled>导入中…</button>';
-  var fail=[],cnt={};
+  var fail=[],cnt={};var _ibImpDesk9=!!(window._ibIsDeskBackup&&window._ibIsDeskBackup(_mioData)),_ibKept9=[],_ibForce9=(_mioSel['__mpForce']===true);/* v301-p */
   for(var i=0;i<_mioFound.length;i++){
     var s=_mioFound[i],row=e.bd.querySelector('.mio-row[data-s="'+s+'"]'),st=row&&row.querySelector('.st');
     if(_mioSel[s]===false){if(st)st.textContent='—';continue}/* v120-p：#3 未勾选跳过 */
     var list=(_mioData[s]||[]).filter(function(x){return x&&typeof x==='object'});cnt[s]=list.length;
+    if(s==='apiSettings'&&window._ibMergeSettingsM){try{var _mg9=await window._ibMergeSettingsM(list,_ibImpDesk9,_ibForce9);list=_mg9.list;_ibKept9=_mg9.kept||[]}catch(e9){}}/* v301-p：电脑端备份里的手机端记录默认保留本机；通话设置按字段合并 */
     try{await dbPutAll(s,list);if(st)st.textContent='✓'}
     catch(err){fail.push(STORE_CN[s]);if(row)row.classList.add('fail');if(st)st.textContent='✕'}
     list=null;_mioData[s]=null;
@@ -12648,11 +12650,12 @@ async function _mioRunImport(){
   _mbgs=null;try{window._pfBgDrop&&window._pfBgDrop()}catch(e){}try{loadBgs().then(function(b){if(!b._volatile)_uiApplyBg(b)}).catch(function(){})}catch(e){}
   _calEvents=[];_calNotes=[];
   await loadCfgs();await loadMP();
+  try{if(window._ibPrefSyncImport)await window._ibPrefSyncImport(!_ibImpDesk9||_ibForce9)}catch(err){}/* v301-p：手机端设置被存档替换时，气泡工作室 / 气泡指定 / 明暗主题按存档写回本机 */
   try{renderDataSum()}catch(err){}
   try{showSec()}catch(err){}/* v67-m d2：统一走 showSec 分发 */
   var _unsel=_mioFound.filter(function(s){return _mioSel[s]===false});
   var lbl=_mioFound.filter(function(s){return _mioSel[s]!==false}).map(function(s){return STORE_CN[s]+' '+(cnt[s]||0)+' 条'}).join('、');
-  var msg='导入完成：'+lbl+((cnt.__media)?('、本机媒体库 '+cnt.__media+' 项'):'')+(fail.length?('；失败：'+fail.join('、')):'')+(_unsel.length?('；本次未勾选：'+_unsel.map(function(s){return STORE_CN[s]}).join('、')):'')+(_mioSkipped.length?('；已跳过（手机端不支持）：'+_mioSkipped.join('、')):'');
+  var msg='导入完成：'+lbl+((cnt.__media)?('、本机媒体库 '+cnt.__media+' 项'):'')+(_ibKept9.length?('；这是电脑端导出的备份，已保留本机的'+_ibKept9.join('、')):'')+(fail.length?('；失败：'+fail.join('、')):'')+(_unsel.length?('；本次未勾选：'+_unsel.map(function(s){return STORE_CN[s]}).join('、')):'')+(_mioSkipped.length?('；已跳过（手机端不支持）：'+_mioSkipped.join('、')):'');
   e.bd.insertAdjacentHTML('beforeend','<div class="mio-done">'+msg+'</div>');
   var il=$('imp-log');if(il){il.style.display='';il.textContent='上次'+msg+'（'+new Date().toLocaleString('zh-CN')+'）'}
   _mioBusy=false;_mioData=null;
@@ -12684,7 +12687,7 @@ async function _mioRunExport(){
       }catch(err){parts.push('],');if(row)row.classList.add('fail');if(st)st.textContent='✕'}
     }
     try{if(window._ibVid&&window._ibVid.sel())await window._ibVid.mioExport(function(x){parts.push(x)},_mioFl)}catch(err){}/* v296-p：勾了才写 media 段（逐条转 base64、写一条落一块） */
-    parts.push('"exportDate":'+JSON.stringify(new Date().toISOString())+',"version":4,"appVersion":'+JSON.stringify(IB_VER)+',"noKey":'+(!!_mioNoKey)+'}');/* v86-m r3：版本号占位＋密钥档标记 */
+    parts.push('"exportDate":'+JSON.stringify(new Date().toISOString())+',"version":4,"origin":"mobile","appVersion":'+JSON.stringify(IB_VER)+',"noKey":'+(!!_mioNoKey)+'}');/* v86-m r3：版本号占位＋密钥档标记 */
     _mioFl();
     var blob=new Blob(chunks,{type:'application/json'});chunks=null;
     downloadBlob(blob,'InternalBeyond_backup_'+new Date().toISOString().slice(0,10)+'_mobile'+(_mioNoKey?'_nokey':'')+'.json');
@@ -12984,7 +12987,7 @@ function _orientApply(){try{
   setTimeout(function(){try{if(window.IBNative&&window.IBNative.available){var _bg=$('pres-bg');var _row=_bg&&_bg.closest('.tog');if(_row)_row.style.display=''}}catch(e){}},1200);/* v116-p：壳内显露「后台 Presence（系统级）」开关（桥在文末激活，故延时探测；浏览器 / PWA 保持隐藏） */
 })();
 function _vidQNormM(v){v=String(v==null?'m':v);if(v==='384')return 'l';if(v==='768')return 'h';if(v==='512')return 'm';return (v==='l'||v==='h')?v:'m'}/* 画质档位兼容电脑端备份里的 384/512/768 写法 */
-var IB_VER='v300-p',IB_VER_DATE='2026-09-25';
+var IB_VER='v301-p',IB_VER_DATE='2026-09-25';
 (function _appVerDraw(){var e=document.getElementById('app-ver');if(e)e.textContent='InternalBeyond Mobile '+IB_VER+'（'+IB_VER_DATE+'）'})();
 function _ibVeilHeal(){try{setTimeout(function(){try{var v=document.getElementById('lk-preveil');if(!v||v.classList.contains('off'))return;var lk=document.getElementById('lockscr');if(lk){_lkVeilOff();return}if(localStorage.getItem('ib_lockOn')==='1')return;_lkVeilOff()}catch(e){}},1600)}catch(e){}}/* v246-p：启动完成后仍盖幕的静默自愈 */
 function _lkVeilOff(){try{window._ibVeilOff=true;var v=document.getElementById('lk-preveil');if(v){v.classList.add('off');setTimeout(function(){try{v.remove()}catch(e){}},420)}}catch(e){}}/* fix-r4：预遮罩揭幕（任务 8） */
@@ -20113,7 +20116,7 @@ var _oldProcIbOpsM=procIbOps;procIbOps=async function(cfg,m){var raw=String(m&&m
 
 
 function _pfMapLoad(){try{return JSON.parse(localStorage.getItem('ib_blpf')||'{}')||{}}catch(e){return {}}}
-function _pfMapSave(m9){try{localStorage.setItem('ib_blpf',JSON.stringify(m9))}catch(e){}}
+function _pfMapSave(m9){try{localStorage.setItem('ib_blpf',JSON.stringify(m9))}catch(e){}try{if(window._ibBlpfMirror)window._ibBlpfMirror()}catch(e){}}/* v301-p：每位 TA 的气泡指定同步进 mobilePrefs.blpf */
 var _pfBgC=null,_pfBgP=null,_pfDimT=null;
 function _pfRec(fid){return (_pfBgC&&_pfBgC[fid])||null}
 function _pfBlank(fid){return {id:'pfbg_'+fid,app:'pfbg',fid:fid,l:'',d:'',dim:0,ts:0}}
@@ -24086,7 +24089,11 @@ function _blApply(){
   if(!st){st=document.createElement('style');st.id='ib-bublab-css';document.head.appendChild(st)}
   st.textContent=_blCss(_bl.cfg);
 }
-function _blSave(){try{localStorage.setItem('ib_bublab',JSON.stringify(_bl))}catch(e){}}
+function _blSave(){try{_bl._t=Date.now();localStorage.setItem('ib_bublab',JSON.stringify(_bl))}catch(e){}try{_blMirror()}catch(e){}}
+function _blMirror(){clearTimeout(_blMirror._t);_blMirror._t=setTimeout(async function(){try{if(typeof _mpFromDb==='undefined'||!_mpFromDb)await loadMP();if(!_mpFromDb)return;_mp.bublab=JSON.parse(JSON.stringify(_bl));await saveMP()}catch(e){}},900)}/* v301-p：气泡工作室同步一份进 mobilePrefs.bublab（随备份），本机缓存照旧 */
+window._ibBlSync=async function(fromImport){try{await loadMP()}catch(e){}if(typeof _mpFromDb==='undefined'||!_mpFromDb)return;var rem=(_mp.bublab&&_mp.bublab.cfg)?_mp.bublab:null,loc=null;try{loc=JSON.parse(localStorage.getItem('ib_bublab')||'null')}catch(e){}
+  if(rem&&(fromImport||!(loc&&loc.cfg)||(rem._t||0)>(loc._t||0))){var nb=JSON.parse(JSON.stringify(rem));if(!Array.isArray(nb.slots))nb.slots=[];nb.cfg=_blSanitize(nb.cfg);_bl=nb;try{localStorage.setItem('ib_bublab',JSON.stringify(_bl))}catch(e){}try{_blApply()}catch(e){}}
+  else if(loc&&loc.cfg&&(!rem||(loc._t||0)>(rem._t||0)||(!loc._t&&!rem._t))){_mp.bublab=JSON.parse(JSON.stringify(loc));try{await saveMP()}catch(e){}}};/* 开机：两边谁新用谁；导入手机端备份后：以存档为准 */
 var _blPrev=null;
 var _blDSel={u:'tl',a:'tl'};/* v125-a：#1 装饰面板当前选中槽位 */
 function _blPrompt(){
@@ -24228,7 +24235,7 @@ _bl.cfg=_blSanitize(_bl.cfg);_blApply();
 var _blBtn=$('bl-open');if(_blBtn)_blBtn.addEventListener('click',_blSheet);
 
 (function(){var def={id:'bubblelab',name:'Bubble Lab',sdk:2,builtin:true,icon:'<path d="M9.5 3h5"/><path d="M10.2 3v5.1L5.5 16.9A2.6 2.6 0 0 0 7.9 20.5h8.2a2.6 2.6 0 0 0 2.4-3.6L13.8 8.1V3"/><path d="M7.3 14h9.4"/><circle cx="10.4" cy="17.2" r="1"/><circle cx="13.6" cy="16" r=".7"/><circle cx="12.2" cy="18.6" r=".5"/>',/* 手机端：换带水冒泡的烧杯；旧图标带 <svg> 外壳过不了 ICON_RE、桌面一直落在默认图标，注册图标只收内层元素 */mount:function(root){try{_blSheet()}catch(e){}return{unmount:function(){}}}};
-  function reg(){try{if(_mp){_mp.apps=_mp.apps||{};_mp.apps.on=_mp.apps.on||{};var dirty=false;if(!_mp.apps.on.bubblelab){_mp.apps.on.bubblelab=1;dirty=true}_mp.desk=_mp.desk||{};_mp.desk.pages=_mp.desk.pages||{};if(!_mp.desk.pages['app:x:bubblelab']){_mp.desk.pages['app:x:bubblelab']=2;dirty=true}if(dirty&&typeof saveMP==='function')saveMP()}}catch(e){}try{if(window.IBApps&&IBApps.register)IBApps.register(def)}catch(e){}}
+  function reg(){try{if(_mp){_mp.apps=_mp.apps||{};_mp.apps.on=_mp.apps.on||{};var dirty=false;if(!_mp.apps.on.bubblelab){_mp.apps.on.bubblelab=1;dirty=true}_mp.desk=_mp.desk||{};_mp.desk.pages=_mp.desk.pages||{};if(!_mp.desk.pages['app:x:bubblelab']){_mp.desk.pages['app:x:bubblelab']=2;dirty=true}if(dirty&&typeof saveMP==='function'&&typeof _mpFromDb!=='undefined'&&_mpFromDb)saveMP()/* v301-p：库没打开前不存，1.5 秒 / 4 秒后的重试会补上 */}}catch(e){}try{if(window.IBApps&&IBApps.register)IBApps.register(def)}catch(e){}}
   reg();setTimeout(reg,1500);setTimeout(reg,4000);
   document.addEventListener('click',function(e){var b=e.target&&e.target.closest&&e.target.closest('[data-dk="app:x:bubblelab"]');if(!b)return;e.preventDefault();e.stopImmediatePropagation();_blSheet()},true);})();
 try{var st9=document.createElement('style');st9.textContent='#ib-bl-ov details{display:none!important}';document.head.appendChild(st9)}catch(e){}
@@ -24544,7 +24551,7 @@ function unregWidget(id){var el=WIDGETS[id];if(!el)return;try{if(el._un)el._un()
 window._ibSbxWidgets=function(){try{(LIST||[]).forEach(function(a){if(a.widget&&!(WIDGETS[a.id]&&WIDGETS[a.id].isConnected))regWidget(a)})}catch(e){}};
 var ICON_APP='<path d="M12 3.2 20 7.6v8.8L12 20.8 4 16.4V7.6z"/><path d="M4 7.6 12 12l8-4.4M12 12v8.8"/>';
 var ICON_LAB='<path d="M14.6 6.2a4 4 0 0 0-5.2 5.2L4 16.8V20h3.2l5.4-5.4a4 4 0 0 0 5.2-5.2l-2.3 2.3-2.3-.6-.6-2.3z"/><path d="M18.5 3v2.4M17.3 4.2h2.4"/>';/* 手机端：扳手 + 星芒 */
-function sbxOn(id,page){try{if(typeof _mp!=='undefined'&&_mp){_mp.apps=_mp.apps||{};_mp.apps.on=_mp.apps.on||{};_mp.desk=_mp.desk||{};_mp.desk.pages=_mp.desk.pages||{};var dirty=false;if(!_mp.apps.on[id]){_mp.apps.on[id]=1;dirty=true}if(!_mp.desk.pages['app:x:'+id]){_mp.desk.pages['app:x:'+id]=page||2;dirty=true}if(dirty&&typeof saveMP==='function')saveMP()}}catch(e){}}/* 手机端：常驻 APP 落第 1 分屏，其余第 2 */
+function sbxOn(id,page){try{if(typeof _mp!=='undefined'&&_mp){_mp.apps=_mp.apps||{};_mp.apps.on=_mp.apps.on||{};_mp.desk=_mp.desk||{};_mp.desk.pages=_mp.desk.pages||{};var dirty=false;if(!_mp.apps.on[id]){_mp.apps.on[id]=1;dirty=true}if(!_mp.desk.pages['app:x:'+id]){_mp.desk.pages['app:x:'+id]=page||2;dirty=true}if(dirty&&typeof saveMP==='function'&&typeof _mpFromDb!=='undefined'&&_mpFromDb)saveMP()/* v301-p：库没打开前不存，1.5 秒 / 4 秒后的重试会补上 */}}catch(e){}}/* 手机端：常驻 APP 落第 1 分屏，其余第 2 */
 function reg(app){if(!window.IBApps||!IBApps.register||!app||!app.id)return;var un=null;sbxOn(app.id,app.keep?1:2);try{IBApps.register({id:app.id,name:String(app.name||'APP').slice(0,20),version:String(app.ver||'1'),sdk:2,builtin:true,icon:ICON_APP,mount:function(h,c){codeOf(app.id).then(function(code){if(!h.isConnected)return;try{un=mountApp(Object.assign({},app,{code:code}),h,c)}catch(e){h.textContent='沙箱启动失败：'+((e&&e.message)||e)}})},unmount:function(){try{if(un)un()}catch(e){}un=null}})}catch(e){}setTimeout(function(){try{skinIcons()}catch(e){}},0);try{if(app.widget)regWidget(app);else unregWidget(app.id)}catch(e){}}/* 手机端：代码按需读；自带图标由 skinIcons 贴上 */
 var TPL='// name: 五子棋\n(function(){var N=15,B=[],turn=1,over=false,busy=false,opp=null,opn="TA";var root=document.body;root.style.cssText="margin:0;padding:12px;font:15px/1.5 system-ui,sans-serif";\nfunction col(){var d=IB.theme()==="dark";return {tx:d?"#e0e6f2":"#0a1e42",bg:d?"rgba(20,30,55,.45)":"rgba(255,255,255,.55)",ln:d?"rgba(165,188,230,.26)":"rgba(255,255,255,.74)",bd:d?"#2b3a56":"#dfe7f3",gl:d?"rgba(180,200,235,.45)":"rgba(60,90,140,.35)"}}\nvar st=document.createElement("style");document.head.appendChild(st);\nvar h=document.createElement("div");h.className="h";var pick=document.createElement("div");pick.className="pk";var g=document.createElement("div");g.className="g";var say=document.createElement("div");say.className="say";var bar=document.createElement("div");bar.className="bar";\nroot.appendChild(h);root.appendChild(pick);root.appendChild(g);root.appendChild(say);root.appendChild(bar);\nvar cells=[];for(var i=0;i<N*N;i++){var c=document.createElement("div");c.className="c";c.setAttribute("data-i",i);g.appendChild(c);cells.push(c)}\nfunction paint(){var C=col();st.textContent=".h{font-weight:600;margin:0 0 8px;color:"+C.tx+"}.pk{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}.pk button,.bar button{font:inherit;font-size:14px;min-height:40px;padding:6px 12px;border-radius:12px;border:1px solid "+C.ln+";background:"+C.bg+";color:"+C.tx+"}.pk button.on{box-shadow:0 0 0 2px "+C.gl+"}.g{display:grid;grid-template-columns:repeat("+N+",1fr);gap:1px;background:"+C.bd+";border:1px solid "+C.ln+";border-radius:10px;overflow:hidden;aspect-ratio:1}.c{background:"+C.bg+";display:flex;align-items:center;justify-content:center;min-height:0}.say{margin:10px 0;min-height:22px;color:"+C.tx+";opacity:.85;font-size:14px}.bar{display:flex;gap:8px}";draw()}\nfunction draw(){for(var i=0;i<N*N;i++){var c=cells[i];c.innerHTML="";if(B[i]){var s=document.createElement("div");s.style.cssText="width:72%;height:72%;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.35);background:"+(B[i]===1?"#1c2233":"#f4f6fa");c.appendChild(s)}}if(!over)h.textContent="五子棋 · 你执黑 · "+(turn===1?"你走":opn+" 在想…")}\nfunction win(i){var x=i%N,y=(i-x)/N,v=B[i],D=[[1,0],[0,1],[1,1],[1,-1]];for(var d=0;d<4;d++){var n=1;for(var s=-1;s<=1;s+=2){var k=1;while(true){var xx=x+D[d][0]*k*s,yy=y+D[d][1]*k*s;if(xx<0||yy<0||xx>=N||yy>=N||B[yy*N+xx]!==v)break;n++;k++}}if(n>=5)return true}return false}\nfunction boardText(){var r=[];for(var y=0;y<N;y++){var s="";for(var x=0;x<N;x++){var v=B[y*N+x];s+=v===1?"X":v===2?"O":"."}r.push((y<10?" ":"")+y+" "+s)}return "   012345678901234\\n"+r.join("\\n")}\nfunction heur(){var best=-1,bi=-1;for(var i=0;i<N*N;i++){if(B[i])continue;var x=i%N,y=(i-x)/N,sc=0;for(var dy=-1;dy<=1;dy++)for(var dx=-1;dx<=1;dx++){if(!dx&&!dy)continue;var xx=x+dx,yy=y+dy;if(xx<0||yy<0||xx>=N||yy>=N)continue;var v=B[yy*N+xx];if(v===2)sc+=3;else if(v===1)sc+=2}if(sc>best){best=sc;bi=i}}return bi<0?Math.floor(N*N/2):bi}\nfunction save(){IB.storage.set("board",{B:B,turn:turn,opp:opp,opn:opn,over:over})}\nfunction aiMove(){busy=true;draw();var u="棋盘（X＝用户的黑棋，O＝你的白棋，.＝空，坐标从 0 起）：\\n"+boardText()+"\\n轮到你（O）落子。只回一行 JSON：{\\"x\\":列,\\"y\\":行,\\"say\\":\\"一句话，20 字内\\"}，坐标必须是空位。";\n  IB.ai.call({who:opp,persona:true,system:"你在和用户下五子棋（15×15，五连即胜）。认真下：先堵用户的四连和活三，再谋自己的连子。say 里可以按你平时的口吻说一句。除了那一行 JSON 什么都不写。",user:u}).then(function(t){var m=/\\{[\\s\\S]*\\}/.exec(String(t||""));var mv=null,s="";try{var o=JSON.parse(m[0]);var x=o.x|0,y=o.y|0;if(x>=0&&y>=0&&x<N&&y<N&&!B[y*N+x])mv=y*N+x;s=String(o.say||"").slice(0,60)}catch(e){}if(mv===null)mv=heur();place(mv,2,s)},function(e){place(heur(),2,"（"+opn+" 没接上线，先替 TA 走一步）")})}\nfunction place(i,v,s){B[i]=v;busy=false;if(s)say.textContent=opn+"："+s;if(win(i)){over=true;h.textContent=v===1?"你赢了！点「重开」再来":opn+" 赢了。点「重开」再来";draw();save();return}if(!B.some(function(q){return !q})){over=true;h.textContent=\"平局。点「重开」再来\";draw();save();return}turn=3-v;draw();save();if(turn===2&&!over)aiMove()}\ng.addEventListener("click",function(e){var c=e.target.closest(".c");if(!c||over||busy||turn!==1||!opp)return;var i=+c.getAttribute("data-i");if(B[i])return;place(i,1,"")});\nvar rb=document.createElement("button");rb.textContent="重开";rb.onclick=function(){B=[];for(var i=0;i<N*N;i++)B.push(0);turn=1;over=false;busy=false;say.textContent="";draw();save()};bar.appendChild(rb);\nfunction showPick(list){pick.innerHTML="";list.forEach(function(f){var b=document.createElement("button");b.textContent=f.name;if(f.id===opp)b.className="on";b.onclick=function(){opp=f.id;opn=f.name;Array.prototype.forEach.call(pick.children,function(x){x.className=x===b?"on":""});say.textContent="对手："+opn;draw();save()};pick.appendChild(b)})}\nfunction boot(list){IB.storage.get("board").then(function(d){if(d&&d.B&&d.B.length===N*N){B=d.B;turn=d.turn||1;opp=d.opp||null;opn=d.opn||"TA";over=!!d.over}if(B.length!==N*N){B=[];for(var i=0;i<N*N;i++)B.push(0)}if(!opp||!list.some(function(f){return f.id===opp})){opp=list[0].id;opn=list[0].name}showPick(list);paint();if(turn===2&&!over)aiMove()},function(){B=[];for(var i=0;i<N*N;i++)B.push(0);opp=list[0].id;opn=list[0].name;showPick(list);paint()})}\nIB.chat.friends().then(function(list){if(!list||!list.length){paint();say.textContent="先到 API 页添加一位 TA，再来下棋";return}boot(list)},function(){paint();say.textContent="拿不到 TA 名单"});\nIB.onTheme=function(){paint()};\n})();';
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
@@ -26083,6 +26090,46 @@ function boot(){(async function(){try{if(typeof loadMP==='function')await loadMP
   try{if(typeof SEC_RENDER!=='undefined'&&SEC_RENDER){var o9=SEC_RENDER['visual:main'];SEC_RENDER['visual:main']=function(){try{if(o9)o9.apply(this,arguments)}catch(e){}apply()}}}catch(e){}
   var sw=document.getElementById('ui-reduce');if(sw)sw.addEventListener('click',function(){setTimeout(apply,60)})})()}
 window.IBFx={apply:apply,set:set,cur:cur};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else setTimeout(boot,0)})();
+</script>
+<script id="ib-datasync-pack">
+(function(){
+'use strict';
+var PHONE_IDS={mobilePrefs:1,mobileBgs:1,ib_kao:1,ib_stk:1};
+function phoneOwned(id){id=String(id||'');return !!PHONE_IDS[id]||/^sbx_/.test(id)||/^ib_stkimg_/.test(id)||/^pfbg_/.test(id)}
+function isDesk(d){if(!d||typeof d!=='object')return false;if(d.origin==='mobile')return false;if(d.origin==='desktop')return true;return !/^v\d+-[apm]\b/.test(String(d.appVersion||''))}
+var CARD_F=['sig','sigAI','cardBg','cardBgInf'];
+async function merge(list,fromDesk,force){var out=[],kept=[],merged=[];list=Array.isArray(list)?list:[];
+  for(var i=0;i<list.length;i++){var r=list[i];if(!r||typeof r!=='object'||!r.id){out.push(r);continue}var id=String(r.id);
+    if(id==='callSettings'){var loc=null;try{loc=await dbGet('apiSettings','callSettings')}catch(e){}
+      if(loc&&typeof loc==='object'){var m=Object.assign({},loc,r),pa={},lp=(loc.perApi&&typeof loc.perApi==='object')?loc.perApi:{},ip=(r.perApi&&typeof r.perApi==='object')?r.perApi:{};Object.keys(lp).forEach(function(k){pa[k]=Object.assign({},lp[k])});Object.keys(ip).forEach(function(k){pa[k]=Object.assign({},pa[k]||{},ip[k])});m.perApi=pa;r=m;merged.push('通话设置')}
+      out.push(r);continue}
+    if(fromDesk&&!force&&phoneOwned(id)){var l2=null;try{l2=await dbGet('apiSettings',id)}catch(e){}
+      if(l2&&typeof l2==='object'){
+        if(id==='mobilePrefs'){var base=JSON.parse(JSON.stringify(l2)),inP=(r.perAi&&typeof r.perAi==='object')?r.perAi:((r.data&&r.data.perAi)||{}),bp=(base.perAi&&typeof base.perAi==='object')?base.perAi:(base.perAi={}),n=0;
+          Object.keys(inP).forEach(function(fid){var src=inP[fid]||{};CARD_F.forEach(function(f){if(src[f]!==undefined&&JSON.stringify((bp[fid]||{})[f])!==JSON.stringify(src[f])){bp[fid]=bp[fid]||{};bp[fid][f]=src[f];n++}})});
+          out.push(base);kept.unshift('手机端设置'+(n?('（并入了电脑端改过的名片 '+n+' 项）'):''))}
+        else if(kept.indexOf('手机端壁纸、表情包与装扮')<0)kept.push('手机端壁纸、表情包与装扮');
+        continue}}
+    out.push(r)}
+  return {list:out,kept:kept,merged:merged}}
+function mfd(){try{return typeof _mp==='object'&&!!_mp&&typeof _mpFromDb!=='undefined'&&!!_mpFromDb}catch(e){return false}}
+function blpf(fromImport){try{if(!mfd())return;var loc=null;try{loc=JSON.parse(localStorage.getItem('ib_blpf')||'null')}catch(e){}var rem=(_mp.blpf&&typeof _mp.blpf==='object')?_mp.blpf:null;
+  if(rem&&(fromImport||!loc)){localStorage.setItem('ib_blpf',JSON.stringify(rem));try{if(typeof _pfApply==='function')_pfApply()}catch(e){}}
+  else if(loc&&JSON.stringify(loc)!==JSON.stringify(rem)){_mp.blpf=loc;saveMP()}}catch(e){}}
+window._ibBlpfMirror=function(){clearTimeout(window._ibBlpfMirror._t);window._ibBlpfMirror._t=setTimeout(function(){blpf(false)},900)};
+async function syncImport(restored){try{await loadMP()}catch(e){}if(!restored||!mfd())return;
+  try{if(window._ibBlSync)await window._ibBlSync(true)}catch(e){}
+  blpf(true);
+  try{var cur=document.body.classList.contains('theme-infernal')?'infernal':'internal';if(_mp.themeMode&&_mp.themeMode!==cur&&typeof applyTheme==='function')applyTheme(_mp.themeMode==='infernal')}catch(e){}
+  try{if(window.IBFx&&IBFx.apply)IBFx.apply()}catch(e){}
+  try{if(typeof _uiApply==='function')_uiApply()}catch(e){}}
+async function boot(){for(var i=0;i<160&&!window._ibBootDone;i++)await new Promise(function(r){setTimeout(r,250)});try{await loadMP()}catch(e){}if(!mfd())return;
+  try{if(window._ibBlSync)await window._ibBlSync(false)}catch(e){}
+  blpf(false);
+  try{var cur=document.body.classList.contains('theme-infernal')?'infernal':'internal';if(_mp.themeMode!==cur){_mp.themeMode=cur;await saveMP()}}catch(e){}}
+window._ibIsDeskBackup=isDesk;window._ibPhoneOwned=phoneOwned;window._ibMergeSettingsM=merge;window._ibPrefSyncImport=syncImport;
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else setTimeout(boot,0);
+})();
 </script>
 </body>
 </html>
